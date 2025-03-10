@@ -9,11 +9,16 @@ public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
     private readonly IMistralService _mistralService;
+    private readonly IDocumentService _documentService;
 
-    public HomeController(ILogger<HomeController> logger, IMistralService mistralService)
+    public HomeController(
+        ILogger<HomeController> logger, 
+        IMistralService mistralService,
+        IDocumentService documentService)
     {
         _logger = logger;
         _mistralService = mistralService;
+        _documentService = documentService;
     }
 
     public IActionResult Index()
@@ -46,32 +51,96 @@ public class HomeController : Controller
         {
             var result = await _mistralService.UploadPdfAsync(stream, model.File.FileName);
             model.UploadResult = result;
+            
+            // Store the file URL in the database if upload was successful
+            if (result.IsSuccess && !string.IsNullOrEmpty(result.FileUrl))
+            {
+                var documentTitle = Path.GetFileNameWithoutExtension(model.File.FileName);
+                await _documentService.AddDocumentAsync(result.FileUrl, documentTitle);
+            }
         }
 
         return View(model);
     }
-    
+
     [HttpPost]
-    public async Task<IActionResult> AskQuestion([FromBody] ChatCompletionRequest request)
+    [Route("home/upload")]
+    public async Task<IActionResult> UploadFile(IFormFile file)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.Question) || string.IsNullOrWhiteSpace(request.DocumentUrl))
+        if (file == null || file.Length == 0)
         {
-            return BadRequest(new { success = false, message = "Question and document URL are required" });
+            return BadRequest(new FileUploadResponse
+            {
+                IsSuccess = false,
+                ErrorMessage = "No file was uploaded"
+            });
         }
-        
+
+        // Check if the file is a PDF
+        if (!file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new FileUploadResponse
+            {
+                IsSuccess = false,
+                ErrorMessage = "Only PDF files are supported"
+            });
+        }
+
         try
         {
-            var chatResponse = await _mistralService.GetChatCompletionAsync(
-                request.Question,
-                request.DocumentUrl
-            );
-            
-            return Json(chatResponse);
+            using (var stream = file.OpenReadStream())
+            {
+                var result = await _mistralService.UploadPdfAsync(stream, file.FileName);
+                
+                if (result.IsSuccess && !string.IsNullOrEmpty(result.FileUrl))
+                {
+                    // Store the document URL in the database
+                    var documentTitle = Path.GetFileNameWithoutExtension(file.FileName);
+                    var document = await _documentService.AddDocumentAsync(result.FileUrl, documentTitle);
+                    
+                    // Update the document as processed
+                    await _documentService.UpdateDocumentProcessedAsync(document.Id);
+                    
+                    _logger.LogInformation($"File uploaded from home page and stored in database: {documentTitle}, URL: {result.FileUrl}");
+                }
+                else
+                {
+                    _logger.LogWarning($"File upload from home page succeeded but no URL was returned or operation failed: {result.ErrorMessage}");
+                }
+                
+                return Ok(result);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing chat completion request");
-            return StatusCode(500, new { success = false, message = $"Error: {ex.Message}" });
+            _logger.LogError(ex, "Error uploading file from home page");
+            return StatusCode(500, new FileUploadResponse
+            {
+                IsSuccess = false,
+                ErrorMessage = $"Error: {ex.Message}"
+            });
+        }
+    }
+
+    [HttpPost]
+    [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200 MB
+    public async Task<IActionResult> AskQuestion([FromBody] ChatCompletionRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Question) || string.IsNullOrEmpty(request.DocumentUrl))
+        {
+            return BadRequest(new { error = "Question and document URL are required" });
+        }
+
+        try
+        {
+            _logger.LogInformation("Processing chat completion request with model: {Model}", request.Model);
+            var result = await _mistralService.GetChatCompletionAsync(request.Question, request.DocumentUrl, request.Model);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting chat completion");
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 
@@ -89,6 +158,18 @@ public class HomeController : Controller
     public IActionResult Ocr()
     {
         return View();
+    }
+    
+    public async Task<IActionResult> ProcessDocument(int id)
+    {
+        var document = await _documentService.GetDocumentByIdAsync(id);
+        
+        if (document == null)
+        {
+            return NotFound();
+        }
+        
+        return View(document);
     }
 }
 

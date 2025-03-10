@@ -2,51 +2,44 @@ using System.Text.Json.Serialization;
 
 namespace MistralOCR.Models
 {
+
     public class OcrResponse
     {
-        public string Id { get; set; } = string.Empty;
-        public string Model { get; set; } = string.Empty;
-        public OcrPage[] Pages { get; set; } = Array.Empty<OcrPage>();
-        public string? Error { get; set; }
-        public bool IsSuccess { get; set; }
+        public int dpi { get; set; }
+        public int height { get; set; }
+        public int width { get; set; }
     }
 
-    public class OcrPage
+    public class Image
     {
-        public int PageNumber { get; set; }
-        public string Text { get; set; } = string.Empty;
-        
-        [JsonPropertyName("image_base64")]
-        public string? ImageBase64 { get; set; }
-        
-        public OcrBlock[] Blocks { get; set; } = Array.Empty<OcrBlock>();
+        public string id { get; set; }
+        public int top_left_x { get; set; }
+        public int top_left_y { get; set; }
+        public int bottom_right_x { get; set; }
+        public int bottom_right_y { get; set; }
+        public string image_base64 { get; set; }
     }
 
-    public class OcrBlock
+    public class Page
     {
-        public string Text { get; set; } = string.Empty;
-        public OcrBoundingBox BoundingBox { get; set; } = new OcrBoundingBox();
-        public OcrLine[] Lines { get; set; } = Array.Empty<OcrLine>();
+        public int index { get; set; }
+        public string markdown { get; set; }
+        public List<Image> images { get; set; }
+        public OcrResponse dimensions { get; set; }
     }
 
-    public class OcrLine
+    public class Root
     {
-        public string Text { get; set; } = string.Empty;
-        public OcrBoundingBox BoundingBox { get; set; } = new OcrBoundingBox();
-        public OcrWord[] Words { get; set; } = Array.Empty<OcrWord>();
+        public bool IsSuccess { get; set; } = false;
+        public string Error { get; set; }
+        public List<Page> pages { get; set; }
+        public string model { get; set; }
+        public UsageInfo usage_info { get; set; }
     }
 
-    public class OcrWord
+    public class UsageInfo
     {
-        public string Text { get; set; } = string.Empty;
-        public OcrBoundingBox BoundingBox { get; set; } = new OcrBoundingBox();
+        public int pages_processed { get; set; }
+        public int doc_size_bytes { get; set; }
     }
-
-    public class OcrBoundingBox
-    {
-        public double X { get; set; }
-        public double Y { get; set; }
-        public double Width { get; set; }
-        public double Height { get; set; }
-    }
-} 
+}

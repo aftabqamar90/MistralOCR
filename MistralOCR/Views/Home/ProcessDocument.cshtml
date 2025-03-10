@@ -1,0 +1,487 @@
+@model MistralOCR.Models.DocumentRecord
+
+@{
+    ViewData["Title"] = "Process Document";
+}
+
+<style>
+    :root {
+        --primary-color: #6366f1;
+        --primary-hover: #4f46e5;
+        --secondary-color: #10b981;
+        --secondary-hover: #059669;
+        --accent-color: #f59e0b;
+        --dark-color: #1f2937;
+        --light-color: #f3f4f6;
+        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --hover-transition: all 0.3s ease;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--card-shadow);
+    }
+
+    .custom-card {
+        border: none;
+        border-radius: 0.5rem;
+        box-shadow: var(--card-shadow);
+        transition: var(--hover-transition);
+    }
+
+    .custom-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+        background: linear-gradient(to right, var(--primary-color), var(--primary-hover));
+        color: white;
+        border-top-left-radius: 0.5rem !important;
+        border-top-right-radius: 0.5rem !important;
+        font-weight: 600;
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        transition: var(--hover-transition);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        border-color: var(--primary-hover);
+        transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+        transition: var(--hover-transition);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--secondary-hover);
+        border-color: var(--secondary-hover);
+        transform: translateY(-2px);
+    }
+
+    .btn-outline-secondary {
+        color: var(--dark-color);
+        border-color: var(--dark-color);
+        transition: var(--hover-transition);
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: var(--dark-color);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+        padding: 0.625rem;
+        transition: var(--hover-transition);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
+    }
+
+    .form-check-input:checked {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .spinner-border {
+        color: var(--primary-color);
+    }
+
+    .alert-danger {
+        background-color: #fee2e2;
+        border-color: #fecaca;
+        color: #b91c1c;
+    }
+
+    .alert-warning {
+        background-color: #fef3c7;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+
+    .result-section {
+        background-color: var(--light-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+
+    .copy-btn {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        transition: var(--hover-transition);
+    }
+
+    .copy-btn:hover {
+        background-color: #d97706;
+        transform: translateY(-2px);
+    }
+
+    .empty-state {
+        color: #6b7280;
+        transition: var(--hover-transition);
+    }
+
+    .empty-state:hover {
+        color: var(--primary-color);
+    }
+
+    .section-label {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .data-value {
+        color: var(--dark-color);
+        font-weight: 500;
+    }
+
+    .page-number {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="mb-2">Process Document</h1>
+            <p class="lead mb-0">Perform OCR operations on the selected document</p>
+        </div>
+        <a href="/Home/Ocr" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to OCR
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="custom-card card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Document Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label section-label">Title</label>
+                        <p class="data-value">@Model.Title</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label section-label">URL</label>
+                        <p class="text-break data-value">
+                            <a href="@Model.Url" target="_blank" class="text-decoration-none">@Model.Url</a>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label section-label">Created</label>
+                        <p class="data-value">@Model.CreatedAt.ToString("g")</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label section-label">Last Processed</label>
+                        <p class="data-value">@(Model.LastProcessedAt?.ToString("g") ?? "Never")</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label section-label">Process Count</label>
+                        <p class="data-value">@Model.ProcessCount time@(Model.ProcessCount != 1 ? "s" : "")</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="custom-card card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear-fill me-2"></i>OCR Options</h5>
+                </div>
+                <div class="card-body">
+                    <form id="ocrOptionsForm">
+                        <input type="hidden" id="documentId" value="@Model.Id">
+                        <input type="hidden" id="documentUrl" value="@Model.Url">
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="includeImages">
+                                <label class="form-check-label" for="includeImages">
+                                    Include page images (base64)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="model" class="form-label section-label">Model</label>
+                            <select class="form-select" id="model">
+                                <option value="mistral-ocr-latest" selected>mistral-ocr-latest</option>
+                            </select>
+                        </div>
+                        <button type="button" id="processOcrBtn" class="btn btn-primary w-100">
+                            <i class="bi bi-file-earmark-text me-2"></i> Process OCR
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="custom-card card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Ask Questions</h5>
+                </div>
+                <div class="card-body">
+                    <form id="questionForm">
+                        <div class="mb-3">
+                            <label for="question" class="form-label section-label">Question</label>
+                            <textarea class="form-control" id="question" rows="3" placeholder="Ask a question about this document..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="chatModel" class="form-label section-label">Model</label>
+                            <select class="form-select" id="chatModel">
+                                <option value="mistral-small-latest" selected>mistral-small-latest</option>
+                                <option value="mistral-medium-latest">mistral-medium-latest</option>
+                                <option value="mistral-large-latest">mistral-large-latest</option>
+                            </select>
+                        </div>
+                        <button type="button" id="askQuestionBtn" class="btn btn-secondary w-100">
+                            <i class="bi bi-chat-dots me-2"></i> Ask Question
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="custom-card card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 id="resultTitle" class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Results</h5>
+                    <div>
+                        <button id="copyResultBtn" class="btn btn-sm copy-btn" style="display: none;">
+                            <i class="bi bi-clipboard me-1"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="loadingIndicator" style="display: none;">
+                        <div class="d-flex justify-content-center my-5">
+                            <div class="spinner-border" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <p class="text-center">Processing document, please wait...</p>
+                    </div>
+                    
+                    <div id="resultContent">
+                        <div class="text-center py-5 empty-state">
+                            <i class="bi bi-file-earmark-text" style="font-size: 4rem;"></i>
+                            <p class="mt-3 fs-5">Select an operation to process this document</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const documentId = document.getElementById('documentId').value;
+            const documentUrl = document.getElementById('documentUrl').value;
+            const resultContent = document.getElementById('resultContent');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const resultTitle = document.getElementById('resultTitle');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            
+            // Add pulse animation to buttons
+            const addButtonPulse = (button) => {
+                button.addEventListener('mouseenter', function() {
+                    this.classList.add('shadow-lg');
+                });
+                button.addEventListener('mouseleave', function() {
+                    this.classList.remove('shadow-lg');
+                });
+            };
+            
+            addButtonPulse(document.getElementById('processOcrBtn'));
+            addButtonPulse(document.getElementById('askQuestionBtn'));
+            
+            // Process OCR button
+            document.getElementById('processOcrBtn').addEventListener('click', async function() {
+                const includeImages = document.getElementById('includeImages').checked;
+                const model = document.getElementById('model').value;
+                
+                // Show loading
+                resultTitle.innerHTML = '<i class="bi bi-clipboard-data me-2"></i>OCR Results';
+                resultContent.style.display = 'none';
+                loadingIndicator.style.display = 'block';
+                copyResultBtn.style.display = 'none';
+                
+                try {
+                    const response = await axios.get(`/api/ocr/url?url=${encodeURIComponent(documentUrl)}&includeImages=${includeImages}&model=${model}`, {
+                        timeout: 180000 // 3 minutes timeout
+                    });
+                    
+                    // Hide loading
+                    loadingIndicator.style.display = 'none';
+                    resultContent.style.display = 'block';
+                    
+                    if (response.data && response.data.pages) {
+                        // Show copy button
+                        copyResultBtn.style.display = 'block';
+                        
+                        // Display OCR results
+                        let html = '';
+                        
+                        response.data.pages.forEach((page, index) => {
+                            html += `<div class="mb-4 result-section">`;
+                            html += `<div class="page-number mb-2">Page ${page.index + 1}</div>`;
+                            
+                            // Display page dimensions if available
+                            if (page.dimensions) {
+                                html += `<div class="small text-muted mb-2">
+                                    Dimensions: ${page.dimensions.width}x${page.dimensions.height} (DPI: ${page.dimensions.dpi})
+                                </div>`;
+                            }
+                            
+                            // Display images if available
+                            if (page.images && page.images.length > 0) {
+                                page.images.forEach((image, imgIndex) => {
+                                    if (image.image_base64) {
+                                        html += `<div class="mb-3">
+                                            <div class="small text-muted mb-1">Image ${imgIndex + 1} (ID: ${image.id})</div>
+                                            <img src="data:image/png;base64,${image.image_base64}" 
+                                                class="img-fluid border rounded shadow-sm" 
+                                                alt="Page ${page.index + 1} - Image ${imgIndex + 1}">
+                                            <div class="small text-muted mt-1">
+                                                Position: (${image.top_left_x},${image.top_left_y}) to (${image.bottom_right_x},${image.bottom_right_y})
+                                            </div>
+                                        </div>`;
+                                    }
+                                });
+                            }
+                            
+                            // Display text
+                            html += `<div class="card custom-card">
+                                <div class="card-body">
+                                    <pre class="mb-0" style="white-space: pre-wrap; color: var(--dark-color);">${page.markdown || 'No text content available'}</pre>
+                                </div>
+                            </div>`;
+                            
+                            html += `</div>`;
+                        });
+                        
+                        resultContent.innerHTML = html;
+                    } else {
+                        resultContent.innerHTML = `<div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No OCR results found or invalid response format.
+                        </div>`;
+                    }
+                } catch (error) {
+                    loadingIndicator.style.display = 'none';
+                    resultContent.style.display = 'block';
+                    
+                    resultContent.innerHTML = `<div class="alert alert-danger">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        Error: ${error.response?.data?.error || error.message || 'Unknown error'}
+                    </div>`;
+                }
+            });
+            
+            // Ask Question button
+            document.getElementById('askQuestionBtn').addEventListener('click', async function() {
+                const question = document.getElementById('question').value.trim();
+                const chatModel = document.getElementById('chatModel').value;
+                
+                if (!question) {
+                    alert('Please enter a question');
+                    return;
+                }
+                
+                // Show loading
+                resultTitle.innerHTML = '<i class="bi bi-clipboard-data me-2"></i>Answer';
+                resultContent.style.display = 'none';
+                loadingIndicator.style.display = 'block';
+                copyResultBtn.style.display = 'none';
+                
+                try {
+                    const response = await axios.post('/Home/AskQuestion', {
+                        question: question,
+                        documentUrl: documentUrl,
+                        model: chatModel
+                    }, {
+                        timeout: 180000 // 3 minutes timeout
+                    });
+                    
+                    // Hide loading
+                    loadingIndicator.style.display = 'none';
+                    resultContent.style.display = 'block';
+                    
+                    if (response.data && response.data.answer) {
+                        // Show copy button
+                        copyResultBtn.style.display = 'block';
+                        
+                        // Display answer
+                        resultContent.innerHTML = `
+                            <div class="card custom-card result-section">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <strong class="section-label"><i class="bi bi-question-circle me-2"></i>Question:</strong>
+                                        <p class="mt-2 data-value">${question}</p>
+                                    </div>
+                                    <hr>
+                                    <div>
+                                        <strong class="section-label"><i class="bi bi-chat-left-text me-2"></i>Answer:</strong>
+                                        <p class="mt-2 data-value" style="white-space: pre-wrap;">${response.data.answer}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        resultContent.innerHTML = `<div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No answer found or invalid response format.
+                        </div>`;
+                    }
+                } catch (error) {
+                    loadingIndicator.style.display = 'none';
+                    resultContent.style.display = 'block';
+                    
+                    resultContent.innerHTML = `<div class="alert alert-danger">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        Error: ${error.response?.data?.error || error.message || 'Unknown error'}
+                    </div>`;
+                }
+            });
+            
+            // Copy result button
+            copyResultBtn.addEventListener('click', function() {
+                const textToCopy = resultContent.textContent;
+                
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
+                        
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy text: ', err);
+                    });
+            });
+        });
+    </script>
+} 

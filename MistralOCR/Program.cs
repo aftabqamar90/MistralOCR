@@ -4,18 +4,32 @@ using MistralOCR.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllersWithViews();
+// Configure Kestrel server timeouts
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(3);
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(3);
+    serverOptions.Limits.MaxRequestBodySize = 209715200; // 200 MB
+});
 
-// Register HttpClient
-builder.Services.AddHttpClient();
+// Add services to the container.
+builder.Services.AddControllersWithViews(options => 
+{
+    options.MaxModelValidationErrors = 50;
+    options.MaxModelBindingCollectionSize = 2000;
+});
+
+// Register HttpClient with 3-minute timeout
+builder.Services.AddHttpClient<IMistralService, MistralService>()
+    .ConfigureHttpClient(client => {
+        client.Timeout = TimeSpan.FromMinutes(3);
+    });
 
 // Add SQLite database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=mistral_ocr.db"));
 
 // Register services
-builder.Services.AddScoped<IMistralService, MistralService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 
 var app = builder.Build();

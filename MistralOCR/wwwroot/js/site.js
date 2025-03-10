@@ -14,12 +14,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetId = this.getAttribute('href');
             if (targetId === '#') return;
             
-            const targetElement = document.querySelector(targetId);
-            if (targetElement) {
-                targetElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+            // Only try to use querySelector if it's a valid selector (starts with #)
+            if (targetId.startsWith('#')) {
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
             }
         });
     }

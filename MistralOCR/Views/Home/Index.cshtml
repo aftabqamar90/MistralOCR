@@ -16,176 +16,34 @@
                     <h3 class="mb-0"><i class="bi bi-cloud-upload me-2 pulse"></i>Upload PDF Document</h3>
                 </div>
                 <div class="card-body">
-                    <form asp-action="Index" method="post" enctype="multipart/form-data" id="uploadForm">
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                        
-                        <div class="file-upload-wrapper" id="dropZone">
-                            <input asp-for="File" type="file" class="form-control" accept=".pdf" id="fileInput" />
-                            <div class="file-upload-message">
-                                <div class="file-upload-icon">
-                                    <i class="bi bi-file-earmark-pdf"></i>
-                                </div>
-                                <h5>Drag & Drop your PDF here</h5>
-                                <p>or click to browse files</p>
-                                <p class="small text-muted">Maximum file size: 10MB</p>
-                            </div>
-                            <div class="file-details d-none" id="fileDetails">
-                                <div class="file-upload-icon text-success">
-                                    <i class="bi bi-file-earmark-check"></i>
-                                </div>
-                                <h5 id="fileName">filename.pdf</h5>
-                                <p id="fileSize">0 KB</p>
-                            </div>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="pdfFile" class="form-label">Select PDF File</label>
+                            <input type="file" class="form-control" id="pdfFile" name="file" accept=".pdf" required>
+                            <div class="form-text">Select a PDF file to upload</div>
                         </div>
-                        <span asp-validation-for="File" class="text-danger"></span>
-                        
-                        <div class="d-grid gap-2 mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg" id="uploadButton">
-                                <i class="bi bi-cloud-upload me-2"></i> Upload and Process
-                            </button>
-                        </div>
+                        <button type="submit" class="btn btn-primary">Upload</button>
                     </form>
                     
-                    @if (Model.UploadResult != null && Model.UploadResult.IsSuccess)
-                    {
-                        <div class="mt-5 fade-in">
-                            <div class="card border-success">
-                                <div class="card-header bg-success text-white">
-                                    <h5 class="mb-0">
-                                        <i class="bi bi-check-circle me-2"></i>
-                                        <span>Upload Successful</span>
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-success">
-                                        <h5><i class="bi bi-check-circle-fill me-2"></i>File successfully uploaded to Mistral AI</h5>
-                                        <hr>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <p><strong><i class="bi bi-fingerprint me-2"></i>File ID:</strong></p>
-                                                <div class="input-group mb-3">
-                                                    <input type="text" class="form-control" value="@Model.UploadResult.FileId" id="fileIdInput" readonly>
-                                                    <button class="btn btn-outline-secondary copy-btn" type="button" onclick="copyToClipboard('fileIdInput', 'File ID')">
-                                                        <i class="bi bi-clipboard"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <p><strong><i class="bi bi-file-earmark me-2"></i>File Name:</strong></p>
-                                                <p class="form-control-plaintext">@Model.UploadResult.FileName</p>
-                                            </div>
-                                        </div>
-                                        <p><strong><i class="bi bi-tag me-2"></i>Purpose:</strong> @Model.UploadResult.Purpose</p>
-                                        
-                                        @if (!string.IsNullOrEmpty(Model.UploadResult.FileUrl))
-                                        {
-                                            <hr>
-                                            <h5 class="mt-4 mb-3"><i class="bi bi-link-45deg me-2"></i>File Access</h5>
-                                            <div class="input-group mb-3">
-                                                <input type="text" class="form-control" value="@Model.UploadResult.FileUrl" id="fileUrlInput" readonly>
-                                                <button class="btn btn-outline-secondary copy-btn" type="button" onclick="copyToClipboard('fileUrlInput', 'File URL')">
-                                                    <i class="bi bi-clipboard"></i> Copy
-                                                </button>
-                                                <a href="@Model.UploadResult.FileUrl" target="_blank" class="btn btn-outline-primary">
-                                                    <i class="bi bi-box-arrow-up-right"></i> Open
-                                                </a>
-                                            </div>
-                                            
-                                            @if (Model.UploadResult.UrlExpiryTime.HasValue)
-                                            {
-                                                <div class="alert alert-warning mt-3">
-                                                    <i class="bi bi-clock me-2"></i> This URL will expire on: 
-                                                    <strong>@Model.UploadResult.UrlExpiryTime.Value.ToString("f")</strong>
-                                                </div>
-                                            }
-                                            
-                                            <!-- Chat with Document Section -->
-                                            <hr>
-                                            <div class="mt-4" id="chatSection">
-                                                <h5 class="mb-3"><i class="bi bi-chat-dots me-2"></i>Ask Questions About Your Document</h5>
-                                                <div id="chatForm">
-                                                    <input type="hidden" id="documentUrl" value="@Model.UploadResult.FileUrl" />
-                                                    
-                                                    <div class="mb-3">
-                                                        <label for="question" class="form-label">Your Question</label>
-                                                        <div class="input-group">
-                                                            <input type="text" class="form-control" id="question" 
-                                                                   placeholder="e.g., What is the main topic of this document?" required>
-                                                            <button class="btn btn-primary" type="button" id="askButton" onclick="askQuestion()">
-                                                                <i class="bi bi-send me-2"></i> Ask
-                                                            </button>
-                                                        </div>
-                                                        <div class="form-text">Ask any question about the content of your PDF document</div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div id="chatResponseContainer" class="mt-4 d-none">
-                                                    <div class="card">
-                                                        <div class="card-header bg-primary text-white">
-                                                            <h5 class="mb-0"><i class="bi bi-robot me-2"></i>AI Response</h5>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <div id="loadingIndicator" class="text-center py-4 d-none">
-                                                                <div class="spinner-border text-primary" role="status">
-                                                                    <span class="visually-hidden">Loading...</span>
-                                                                </div>
-                                                                <p class="mt-2">Processing your question...</p>
-                                                            </div>
-                                                            <div id="responseContent" class="d-none">
-                                                                <h6 class="mb-3" id="questionAsked"></h6>
-                                                                <div class="alert alert-light position-relative" id="answerContainer">
-                                                                    <button type="button" class="response-copy-btn" onclick="copyResponseText('answerText')">
-                                                                        <i class="bi bi-clipboard"></i>
-                                                                    </button>
-                                                                    <div id="answerText"></div>
-                                                                </div>
-                                                                <div class="small text-muted mt-2">
-                                                                    <span id="modelInfo"></span> • <span id="tokenInfo"></span>
-                                                                </div>
-                                                            </div>
-                                                            <div id="errorContent" class="d-none">
-                                                                <div class="alert alert-danger" id="errorText"></div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div id="chatHistory" class="mt-4">
-                                                    <!-- Chat history will be dynamically added here -->
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
+                    <div id="uploadProgress" class="progress mt-3 d-none" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    
+                    <div id="uploadResult" class="mt-3 d-none">
+                        <div class="alert alert-success">
+                            <h5>Upload Successful!</h5>
+                            <p id="uploadResultMessage"></p>
+                            <div class="mt-2">
+                                <a id="fileUrlLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View File</a>
+                                <a id="ocrLink" href="#" class="btn btn-sm btn-outline-secondary">Process with OCR</a>
                             </div>
                         </div>
-                    }
-                    else if (Model.UploadResult != null && !Model.UploadResult.IsSuccess)
-                    {
-                        <div class="mt-5 fade-in">
-                            <div class="card border-danger">
-                                <div class="card-header bg-danger text-white">
-                                    <h5 class="mb-0">
-                                        <i class="bi bi-exclamation-triangle me-2"></i>
-                                        <span>Upload Failed</span>
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-danger">
-                                        <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Error uploading file</h5>
-                                        <hr>
-                                        <p><strong><i class="bi bi-file-earmark me-2"></i>File Name:</strong> @Model.UploadResult.FileName</p>
-                                        <p><strong><i class="bi bi-bug me-2"></i>Error:</strong> @Model.UploadResult.ErrorMessage</p>
-                                        <div class="mt-4">
-                                            <button type="button" class="btn btn-outline-danger" onclick="resetForm()">
-                                                <i class="bi bi-arrow-counterclockwise me-2"></i> Try Again
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    }
+                    </div>
+                    
+                    <div id="uploadError" class="alert alert-danger mt-3 d-none">
+                        <h5>Upload Failed</h5>
+                        <p id="errorMessage"></p>
+                    </div>
                 </div>
             </div>
             
@@ -246,353 +104,158 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     
     <script>
-        // File input handling
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const fileDetails = document.getElementById('fileDetails');
-        const fileUploadMessage = document.querySelector('.file-upload-message');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        
-        // Handle file selection
-        fileInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                updateFileDetails(this.files[0]);
-            }
-        });
-        
-        // Handle drag and drop
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, highlight, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, unhighlight, false);
-        });
-        
-        function highlight() {
-            dropZone.classList.add('border-primary');
-            dropZone.style.backgroundColor = '#f0f4ff';
-        }
-        
-        function unhighlight() {
-            dropZone.classList.remove('border-primary');
-            dropZone.style.backgroundColor = '#f8f9fa';
-        }
-        
-        dropZone.addEventListener('drop', handleDrop, false);
-        
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDocuments();
             
-            if (files && files.length > 0) {
-                fileInput.files = files;
-                updateFileDetails(files[0]);
-            }
-        }
+            // Set up form submission
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                uploadFile();
+            });
+        });
         
-        function updateFileDetails(file) {
+        async function uploadFile() {
+            const fileInput = document.getElementById('pdfFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file to upload');
+                return;
+            }
+            
             // Check if file is PDF
             if (file.type !== 'application/pdf') {
-                showToast('Error', 'Only PDF files are supported', 'danger');
-                resetFileInput();
+                alert('Only PDF files are supported');
                 return;
             }
             
-            // Check file size (max 10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                showToast('Error', 'File size exceeds 10MB limit', 'danger');
-                resetFileInput();
-                return;
-            }
+            // Show progress bar
+            const progressBar = document.getElementById('uploadProgress');
+            const progressBarInner = progressBar.querySelector('.progress-bar');
+            progressBar.classList.remove('d-none');
             
-            // Update UI
-            fileName.textContent = file.name;
-            fileSize.textContent = formatFileSize(file.size);
-            fileUploadMessage.classList.add('d-none');
-            fileDetails.classList.remove('d-none');
+            // Hide previous results
+            document.getElementById('uploadResult').classList.add('d-none');
+            document.getElementById('uploadError').classList.add('d-none');
             
-            // Enable upload button
-            document.getElementById('uploadButton').disabled = false;
-        }
-        
-        function resetFileInput() {
-            fileInput.value = '';
-            fileUploadMessage.classList.remove('d-none');
-            fileDetails.classList.add('d-none');
-        }
-        
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', file);
             
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-        
-        // Form reset
-        function resetForm() {
-            document.getElementById('uploadForm').reset();
-            resetFileInput();
-            window.location.href = '@Url.Action("Index", "Home")';
-        }
-        
-        // Copy to clipboard with toast notification
-        function copyToClipboard(elementId, label) {
-            var copyText = document.getElementById(elementId);
-            copyText.select();
-            copyText.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(copyText.value);
-            
-            showToast('Success', label + ' copied to clipboard', 'success');
-        }
-        
-        // Copy response text
-        function copyResponseText(elementId) {
-            const element = document.getElementById(elementId);
-            const text = element.textContent;
-            
-            navigator.clipboard.writeText(text).then(() => {
-                showToast('Success', 'Response copied to clipboard', 'success');
-            }).catch(err => {
-                showToast('Error', 'Failed to copy: ' + err, 'danger');
-            });
-        }
-        
-        // Toast notification
-        function showToast(title, message, type) {
-            const toastContainer = document.querySelector('.toast-container');
-            
-            const toast = document.createElement('div');
-            toast.className = 'toast fade-in';
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            
-            const toastHeader = document.createElement('div');
-            toastHeader.className = 'toast-header';
-            
-            let icon = 'info-circle';
-            if (type === 'success') icon = 'check-circle';
-            if (type === 'danger') icon = 'exclamation-triangle';
-            
-            toastHeader.innerHTML = `
-                <i class="bi bi-${icon} me-2"></i>
-                <strong class="me-auto">${title}</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            `;
-            
-            const toastBody = document.createElement('div');
-            toastBody.className = 'toast-body';
-            toastBody.textContent = message;
-            
-            toast.appendChild(toastHeader);
-            toast.appendChild(toastBody);
-            
-            toastContainer.appendChild(toast);
-            
-            const bsToast = new bootstrap.Toast(toast, {
-                autohide: true,
-                delay: 3000
-            });
-            
-            bsToast.show();
-            
-            // Remove toast after it's hidden
-            toast.addEventListener('hidden.bs.toast', function() {
-                toast.remove();
-            });
-        }
-        
-        // Chat handling with Axios
-        function askQuestion() {
-            const questionInput = document.getElementById('question');
-            const documentUrlInput = document.getElementById('documentUrl');
-            
-            if (!questionInput.value.trim()) {
-                showToast('Error', 'Please enter a question', 'danger');
-                return;
-            }
-            
-            // Show loading indicator
-            const chatResponseContainer = document.getElementById('chatResponseContainer');
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const responseContent = document.getElementById('responseContent');
-            const errorContent = document.getElementById('errorContent');
-            
-            chatResponseContainer.classList.remove('d-none');
-            loadingIndicator.classList.remove('d-none');
-            responseContent.classList.add('d-none');
-            errorContent.classList.add('d-none');
-            
-            // Disable ask button
-            const askButton = document.getElementById('askButton');
-            askButton.disabled = true;
-            
-            // Prepare request data
-            const requestData = {
-                question: questionInput.value.trim(),
-                documentUrl: documentUrlInput.value
-            };
-            
-            // Send Axios request
-            axios.post('@Url.Action("AskQuestion", "Home")', requestData, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                // Hide loading indicator
-                loadingIndicator.classList.add('d-none');
-                
-                const data = response.data;
-                
-                if (data.isSuccess) {
-                    // Show response
-                    responseContent.classList.remove('d-none');
-                    document.getElementById('questionAsked').textContent = 'Q: ' + questionInput.value;
-                    document.getElementById('answerText').textContent = data.answer;
-                    document.getElementById('modelInfo').textContent = 'Model: ' + data.model;
-                    
-                    if (data.usage) {
-                        document.getElementById('tokenInfo').textContent = 'Tokens: ' + data.usage.totalTokens;
-                    }
-                    
-                    // Add to chat history
-                    addToChatHistory(questionInput.value, data);
-                    
-                    // Clear question input
-                    questionInput.value = '';
-                } else {
-                    // Show error
-                    errorContent.classList.remove('d-none');
-                    document.getElementById('errorText').textContent = data.errorMessage || 'An error occurred while processing your question';
-                }
-            })
-            .catch(error => {
-                // Hide loading indicator and show error
-                loadingIndicator.classList.add('d-none');
-                errorContent.classList.remove('d-none');
-                
-                let errorMessage = 'Error processing your request';
-                if (error.response) {
-                    // The request was made and the server responded with a status code
-                    // that falls out of the range of 2xx
-                    errorMessage = error.response.data.message || error.response.statusText;
-                } else if (error.request) {
-                    // The request was made but no response was received
-                    errorMessage = 'No response from server. Please check your connection.';
-                } else {
-                    // Something happened in setting up the request that triggered an Error
-                    errorMessage = error.message;
-                }
-                
-                document.getElementById('errorText').textContent = errorMessage;
-            })
-            .finally(() => {
-                // Re-enable ask button
-                askButton.disabled = false;
-            });
-        }
-        
-        // Add response to chat history
-        function addToChatHistory(question, response) {
-            const chatHistory = document.getElementById('chatHistory');
-            
-            // Create chat entry
-            const chatEntry = document.createElement('div');
-            chatEntry.className = 'card mb-3 fade-in';
-            
-            // Create card header
-            const cardHeader = document.createElement('div');
-            cardHeader.className = 'card-header bg-primary text-white';
-            cardHeader.innerHTML = `<h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Conversation</h5>`;
-            
-            // Create card body
-            const cardBody = document.createElement('div');
-            cardBody.className = 'card-body';
-            
-            // Add question
-            const questionElement = document.createElement('div');
-            questionElement.className = 'mb-3';
-            questionElement.innerHTML = `
-                <p class="fw-bold"><i class="bi bi-person-circle me-2"></i>You asked:</p>
-                <div class="alert alert-secondary">${question}</div>
-            `;
-            
-            // Create a unique ID for this response
-            const responseId = 'response-' + Date.now();
-            
-            // Add answer with copy button
-            const answerElement = document.createElement('div');
-            answerElement.innerHTML = `
-                <p class="fw-bold"><i class="bi bi-robot me-2"></i>AI response:</p>
-                <div class="alert alert-light position-relative">
-                    <button type="button" class="response-copy-btn" onclick="copyResponseText('${responseId}')">
-                        <i class="bi bi-clipboard"></i>
-                    </button>
-                    <div id="${responseId}">${response.answer}</div>
-                </div>
-                <div class="small text-muted mt-2">
-                    <span>Model: ${response.model}</span> • 
-                    <span>Tokens: ${response.usage ? response.usage.totalTokens : 'N/A'}</span>
-                </div>
-            `;
-            
-            // Assemble chat entry
-            cardBody.appendChild(questionElement);
-            cardBody.appendChild(answerElement);
-            chatEntry.appendChild(cardHeader);
-            chatEntry.appendChild(cardBody);
-            
-            // Add to chat history
-            chatHistory.prepend(chatEntry);
-            
-            // Scroll to chat entry
-            chatEntry.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        
-        // Add event listener for Enter key in question input
-        document.addEventListener('DOMContentLoaded', function() {
-            const questionInput = document.getElementById('question');
-            if (questionInput) {
-                questionInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        askQuestion();
+            try {
+                const response = await axios.post('/home/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: progressEvent => {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        progressBarInner.style.width = percentCompleted + '%';
+                        progressBarInner.textContent = percentCompleted + '%';
                     }
                 });
+                
+                // Handle successful upload
+                if (response.data.isSuccess) {
+                    const result = response.data;
+                    
+                    // Show success message
+                    document.getElementById('uploadResultMessage').textContent = `File "${result.fileName}" uploaded successfully.`;
+                    
+                    // Set up links
+                    const fileUrlLink = document.getElementById('fileUrlLink');
+                    fileUrlLink.href = result.fileUrl;
+                    
+                    const ocrLink = document.getElementById('ocrLink');
+                    ocrLink.href = '/Home/Ocr';
+                    
+                    // Show result
+                    document.getElementById('uploadResult').classList.remove('d-none');
+                    
+                    // Clear file input
+                    fileInput.value = '';
+                    
+                    // Refresh documents list
+                    loadDocuments();
+                } else {
+                    // Show error
+                    document.getElementById('errorMessage').textContent = response.data.errorMessage || 'Unknown error occurred';
+                    document.getElementById('uploadError').classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                document.getElementById('errorMessage').textContent = error.response?.data?.errorMessage || error.message || 'An error occurred during upload';
+                document.getElementById('uploadError').classList.remove('d-none');
+            } finally {
+                // Hide progress after a short delay
+                setTimeout(() => {
+                    progressBar.classList.add('d-none');
+                }, 1000);
             }
+        }
+        
+        async function loadDocuments() {
+            const documentsListEl = document.getElementById('documentsList');
             
-            // Disable upload button initially if no file selected
-            if (fileInput && (!fileInput.files || fileInput.files.length === 0)) {
-                document.getElementById('uploadButton').disabled = true;
+            try {
+                const response = await axios.get('/api/ocr/documents');
+                const documents = response.data;
+                
+                if (documents.length === 0) {
+                    documentsListEl.innerHTML = `
+                        <div class="text-center py-3">
+                            <p class="text-muted">No documents found</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                documentsListEl.innerHTML = '';
+                
+                // Show only the 5 most recent documents
+                const recentDocs = documents.slice(0, 5);
+                
+                recentDocs.forEach(doc => {
+                    const lastProcessed = doc.lastProcessedAt 
+                        ? new Date(doc.lastProcessedAt).toLocaleString() 
+                        : 'Never';
+                    
+                    const item = document.createElement('a');
+                    item.href = '/Home/Ocr';
+                    item.className = 'list-group-item list-group-item-action';
+                    
+                    item.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${doc.title}</h6>
+                            <small>${doc.processCount} time${doc.processCount !== 1 ? 's' : ''}</small>
+                        </div>
+                        <p class="mb-1 text-truncate">${doc.url}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small>Last processed: ${lastProcessed}</small>
+                            <a href="/Home/ProcessDocument/${doc.id}" class="btn btn-sm btn-outline-primary">
+                                Process
+                            </a>
+                        </div>
+                    `;
+                    
+                    documentsListEl.appendChild(item);
+                });
+                
+                if (documents.length > 5) {
+                    const viewMoreLink = document.createElement('a');
+                    viewMoreLink.href = '/Home/Ocr';
+                    viewMoreLink.className = 'btn btn-sm btn-outline-primary mt-2 w-100';
+                    viewMoreLink.textContent = 'View All Documents';
+                    documentsListEl.appendChild(viewMoreLink);
+                }
+                
+            } catch (error) {
+                console.error('Error loading documents:', error);
+                documentsListEl.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error loading documents: ${error.message}
+                    </div>
+                `;
             }
-            
-            // Check if we have a file result and scroll to it
-            @if (Model.UploadResult != null)
-            {
-                <text>
-                setTimeout(function() {
-                    const resultCard = document.querySelector('.card.border-success, .card.border-danger');
-                    if (resultCard) {
-                        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 500);
-                </text>
-            }
-        });
+        }
     </script>
 }

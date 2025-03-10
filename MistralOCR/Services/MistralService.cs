@@ -33,7 +33,14 @@ namespace MistralOCR.Services
             }
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            _httpClient.BaseAddress = new Uri("https://api.mistral.ai/v1/");
+
+            // Set base address if not already set
+            if (_httpClient.BaseAddress == null)
+            {
+                _httpClient.BaseAddress = new Uri("https://api.mistral.ai/v1/");
+            }
+
+            _logger.LogInformation("MistralService initialized with timeout: {Timeout}", _httpClient.Timeout);
         }
 
         public async Task<FileUploadResponse> UploadPdfAsync(Stream fileStream, string fileName)
@@ -168,7 +175,7 @@ namespace MistralOCR.Services
             try
             {
                 _logger.LogInformation($"Getting chat completion for question: {question}");
-                
+
                 // Create the request payload
                 var requestPayload = new
                 {
@@ -196,21 +203,21 @@ namespace MistralOCR.Services
                     document_image_limit = 8,
                     document_page_limit = 64
                 };
-                
+
                 var jsonContent = JsonSerializer.Serialize(requestPayload);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                
+
                 // Send the request
                 var response = await _httpClient.PostAsync("chat/completions", content);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonResponse = await response.Content.ReadAsStringAsync();
                     _logger.LogInformation($"Chat completion response: {jsonResponse}");
-                    
+
                     var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                     var apiResponse = JsonSerializer.Deserialize<ChatApiResponse>(jsonResponse, options);
-                    
+
                     return new ChatCompletionResponse
                     {
                         Id = apiResponse?.Id ?? string.Empty,
@@ -229,7 +236,7 @@ namespace MistralOCR.Services
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogError($"Error getting chat completion: {errorContent}");
-                    
+
                     return new ChatCompletionResponse
                     {
                         IsSuccess = false,
@@ -240,7 +247,7 @@ namespace MistralOCR.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Exception while getting chat completion");
-                
+
                 return new ChatCompletionResponse
                 {
                     IsSuccess = false,
@@ -249,7 +256,7 @@ namespace MistralOCR.Services
             }
         }
 
-        public async Task<OcrResponse> GetOcrAsync(string documentUrl, bool includeImageBase64 = false, string model = "mistral-ocr-latest")
+        public async Task<Root> GetOcrAsync(string documentUrl, bool includeImageBase64 = false, string model = "mistral-ocr-latest")
         {
             try
             {
@@ -273,28 +280,28 @@ namespace MistralOCR.Services
                 });
 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                
+
                 var response = await _httpClient.PostAsync("ocr", content);
                 var responseBody = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError($"OCR API error: {response.StatusCode}, {responseBody}");
-                    return new OcrResponse
+                    return new Root
                     {
                         IsSuccess = false,
                         Error = $"API Error: {response.StatusCode} - {responseBody}"
                     };
                 }
 
-                var ocrResponse = JsonSerializer.Deserialize<OcrResponse>(responseBody, new JsonSerializerOptions
+                var ocrResponse = JsonSerializer.Deserialize<Root>(responseBody, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
 
                 if (ocrResponse == null)
                 {
-                    return new OcrResponse
+                    return new Root
                     {
                         IsSuccess = false,
                         Error = "Failed to deserialize OCR response"
@@ -307,7 +314,7 @@ namespace MistralOCR.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error performing OCR");
-                return new OcrResponse
+                return new Root
                 {
                     IsSuccess = false,
                     Error = $"Exception: {ex.Message}"
@@ -355,10 +362,10 @@ namespace MistralOCR.Services
         {
             [JsonPropertyName("prompt_tokens")]
             public int PromptTokens { get; set; }
-            
+
             [JsonPropertyName("completion_tokens")]
             public int CompletionTokens { get; set; }
-            
+
             [JsonPropertyName("total_tokens")]
             public int TotalTokens { get; set; }
         }

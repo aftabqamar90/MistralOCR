@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MistralOCR.Models;
 using MistralOCR.Services;
+using Microsoft.AspNetCore.Http;
 
 namespace MistralOCR.Controllers
 {
@@ -23,6 +24,7 @@ namespace MistralOCR.Controllers
         }
 
         [HttpPost]
+        [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200 MB
         public async Task<IActionResult> PerformOcr([FromBody] OcrRequest request)
         {
             if (string.IsNullOrEmpty(request.Document.DocumentUrl))
@@ -56,6 +58,7 @@ namespace MistralOCR.Controllers
         }
 
         [HttpGet("url")]
+        [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200 MB
         public async Task<IActionResult> PerformOcrFromUrl([FromQuery] string url, [FromQuery] bool includeImages = false, [FromQuery] string model = "mistral-ocr-latest")
         {
             if (string.IsNullOrEmpty(url))
@@ -85,6 +88,64 @@ namespace MistralOCR.Controllers
             {
                 _logger.LogError(ex, "Error performing OCR");
                 return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadFile(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new FileUploadResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "No file was uploaded"
+                });
+            }
+
+            // Check if the file is a PDF
+            if (!file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new FileUploadResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Only PDF files are supported"
+                });
+            }
+
+            try
+            {
+                using (var stream = file.OpenReadStream())
+                {
+                    var result = await _mistralService.UploadPdfAsync(stream, file.FileName);
+                    
+                    if (result.IsSuccess && !string.IsNullOrEmpty(result.FileUrl))
+                    {
+                        // Store the document URL in the database
+                        var documentTitle = Path.GetFileNameWithoutExtension(file.FileName);
+                        var document = await _documentService.AddDocumentAsync(result.FileUrl, documentTitle);
+                        
+                        // Update the document as processed
+                        await _documentService.UpdateDocumentProcessedAsync(document.Id);
+                        
+                        _logger.LogInformation($"File uploaded and stored in database: {documentTitle}, URL: {result.FileUrl}");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"File upload succeeded but no URL was returned or operation failed: {result.ErrorMessage}");
+                    }
+                    
+                    return Ok(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading file");
+                return StatusCode(500, new FileUploadResponse
+                {
+                    IsSuccess = false,
+                    ErrorMessage = $"Error: {ex.Message}"
+                });
             }
         }
 
