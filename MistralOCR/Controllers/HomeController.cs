@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using MistralOCR.Models;
 using MistralOCR.Services;
+using Microsoft.Extensions.Options;
 
 namespace MistralOCR.Controllers;
 
@@ -10,15 +11,21 @@ public class HomeController : Controller
     private readonly ILogger<HomeController> _logger;
     private readonly IMistralService _mistralService;
     private readonly IDocumentService _documentService;
+    private readonly IQuestionLogService _questionLogService;
+    private readonly AppSettings _appSettings;
 
     public HomeController(
         ILogger<HomeController> logger, 
         IMistralService mistralService,
-        IDocumentService documentService)
+        IDocumentService documentService,
+        IQuestionLogService questionLogService,
+        IOptions<AppSettings> appSettings)
     {
         _logger = logger;
         _mistralService = mistralService;
         _documentService = documentService;
+        _questionLogService = questionLogService;
+        _appSettings = appSettings.Value;
     }
 
     public IActionResult Index()
@@ -101,6 +108,9 @@ public class HomeController : Controller
                     // Update the document as processed
                     await _documentService.UpdateDocumentProcessedAsync(document.Id);
                     
+                    // Add the document ID to the response
+                    result.DocumentId = document.Id;
+                    
                     _logger.LogInformation($"File uploaded from home page and stored in database: {documentTitle}, URL: {result.FileUrl}");
                 }
                 else
@@ -123,7 +133,7 @@ public class HomeController : Controller
     }
 
     [HttpPost]
-    [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200 MB
+    [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // Set from configuration in Program.cs
     public async Task<IActionResult> AskQuestion([FromBody] ChatCompletionRequest request)
     {
         if (string.IsNullOrEmpty(request.Question) || string.IsNullOrEmpty(request.DocumentUrl))
@@ -133,8 +143,37 @@ public class HomeController : Controller
 
         try
         {
+            // Use the model from the request or the default from configuration
+            if (string.IsNullOrEmpty(request.Model))
+            {
+                request.Model = _appSettings.MistralAI.Models.ChatSmall;
+            }
+            
             _logger.LogInformation("Processing chat completion request with model: {Model}", request.Model);
             var result = await _mistralService.GetChatCompletionAsync(request.Question, request.DocumentUrl, request.Model);
+            
+            // If successful, save the question and answer to the database
+            if (result.IsSuccess)
+            {
+                // Get the document by URL
+                var document = await _documentService.GetDocumentByUrlAsync(request.DocumentUrl);
+                if (document != null)
+                {
+                    // Save the question log
+                    await _questionLogService.AddLogAsync(
+                        document.Id,
+                        request.Question,
+                        result.Answer,
+                        request.Model,
+                        result.Usage?.PromptTokens,
+                        result.Usage?.CompletionTokens,
+                        result.Usage?.TotalTokens
+                    );
+                    
+                    _logger.LogInformation("Saved question log for document {DocumentId}", document.Id);
+                }
+            }
+            
             return Ok(result);
         }
         catch (Exception ex)
@@ -154,11 +193,6 @@ public class HomeController : Controller
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
-
-    public IActionResult Ocr()
-    {
-        return View();
-    }
     
     public async Task<IActionResult> ProcessDocument(int id)
     {
@@ -170,6 +204,28 @@ public class HomeController : Controller
         }
         
         return View(document);
+    }
+    
+    public async Task<IActionResult> DocumentLogs(int id)
+    {
+        var document = await _documentService.GetDocumentByIdAsync(id);
+        
+        if (document == null)
+        {
+            return NotFound();
+        }
+        
+        // Get all question logs for this document
+        var logs = await _questionLogService.GetLogsByDocumentIdAsync(id);
+        
+        // Create a view model with both document and logs
+        var viewModel = new DocumentLogsViewModel
+        {
+            Document = document,
+            QuestionLogs = logs
+        };
+        
+        return View(viewModel);
     }
 }
 

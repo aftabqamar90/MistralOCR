@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 
 namespace MistralOCR.Services
 {
@@ -11,15 +12,21 @@ namespace MistralOCR.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<MistralService> _logger;
         private readonly HttpClient _httpClient;
+        private readonly AppSettings _appSettings;
 
-        public MistralService(IConfiguration configuration, ILogger<MistralService> logger, HttpClient httpClient)
+        public MistralService(
+            IConfiguration configuration, 
+            ILogger<MistralService> logger, 
+            HttpClient httpClient,
+            IOptions<AppSettings> appSettings)
         {
             _configuration = configuration;
             _logger = logger;
             _httpClient = httpClient;
+            _appSettings = appSettings.Value;
 
             // Get API key from configuration or environment variable
-            string? apiKey = _configuration["MistralAI:ApiKey"];
+            string? apiKey = _appSettings.MistralAI.ApiKey;
 
             // If not found in configuration, try environment variable
             if (string.IsNullOrEmpty(apiKey) || apiKey == "YOUR_MISTRAL_API_KEY_HERE")
@@ -170,11 +177,14 @@ namespace MistralOCR.Services
             }
         }
 
-        public async Task<ChatCompletionResponse> GetChatCompletionAsync(string question, string documentUrl, string model = "mistral-small-latest")
+        public async Task<ChatCompletionResponse> GetChatCompletionAsync(string question, string documentUrl, string? model = null)
         {
             try
             {
-                _logger.LogInformation($"Getting chat completion for question: {question}");
+                // Use the provided model or default from configuration
+                model ??= _appSettings.MistralAI.Models.ChatSmall;
+                
+                _logger.LogInformation($"Getting chat completion for question: {question} using model: {model}");
 
                 // Create the request payload
                 var requestPayload = new
@@ -256,24 +266,27 @@ namespace MistralOCR.Services
             }
         }
 
-        public async Task<Root> GetOcrAsync(string documentUrl, bool includeImageBase64 = false, string model = "mistral-ocr-latest")
+        public async Task<Root> GetOcrAsync(string documentUrl, bool includeImageBase64 = false, string? model = null)
         {
             try
             {
+                // Use the provided model or default from configuration
+                model ??= _appSettings.MistralAI.Models.OCR;
+                
                 _logger.LogInformation($"Performing OCR on document: {documentUrl} using model: {model}");
 
-                var request = new OcrRequest
+                // Create the request payload with the correct structure
+                var requestPayload = new
                 {
-                    Model = model,
-                    Document = new OcrDocument
+                    document = new
                     {
-                        Type = "document_url",
-                        DocumentUrl = documentUrl
+                        document_url = documentUrl
                     },
-                    IncludeImageBase64 = includeImageBase64
+                    include_image_base64 = includeImageBase64,
+                    model = model
                 };
 
-                var jsonContent = JsonSerializer.Serialize(request, new JsonSerializerOptions
+                var jsonContent = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions
                 {
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase

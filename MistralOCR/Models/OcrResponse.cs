@@ -12,29 +12,29 @@ namespace MistralOCR.Models
 
     public class Image
     {
-        public string id { get; set; }
+        public string id { get; set; } = string.Empty;
         public int top_left_x { get; set; }
         public int top_left_y { get; set; }
         public int bottom_right_x { get; set; }
         public int bottom_right_y { get; set; }
-        public string image_base64 { get; set; }
+        public string image_base64 { get; set; } = string.Empty;
     }
 
     public class Page
     {
         public int index { get; set; }
-        public string markdown { get; set; }
-        public List<Image> images { get; set; }
-        public OcrResponse dimensions { get; set; }
+        public string markdown { get; set; } = string.Empty;
+        public List<Image> images { get; set; } = new List<Image>();
+        public OcrResponse dimensions { get; set; } = new OcrResponse();
     }
 
     public class Root
     {
         public bool IsSuccess { get; set; } = false;
-        public string Error { get; set; }
-        public List<Page> pages { get; set; }
-        public string model { get; set; }
-        public UsageInfo usage_info { get; set; }
+        public string Error { get; set; } = string.Empty;
+        public List<Page> pages { get; set; } = new List<Page>();
+        public string model { get; set; } = string.Empty;
+        public UsageInfo usage_info { get; set; } = new UsageInfo();
     }
 
     public class UsageInfo

@@ -9,5 +9,6 @@ namespace MistralOCR.Models
         public string? ErrorMessage { get; set; }
         public string FileUrl { get; set; } = string.Empty;
         public DateTime? UrlExpiryTime { get; set; }
+        public int DocumentId { get; set; }
     }
 } 

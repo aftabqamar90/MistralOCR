@@ -20,5 +20,8 @@ namespace MistralOCR.Models
         public DateTime? LastProcessedAt { get; set; }
         
         public int ProcessCount { get; set; } = 0;
+        
+        // Navigation property for question logs
+        public ICollection<DocumentQuestionLog> QuestionLogs { get; set; } = new List<DocumentQuestionLog>();
     }
 } 

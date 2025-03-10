@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using MistralOCR.Models;
 using MistralOCR.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace MistralOCR.Controllers
 {
@@ -12,19 +13,22 @@ namespace MistralOCR.Controllers
         private readonly ILogger<OcrController> _logger;
         private readonly IMistralService _mistralService;
         private readonly IDocumentService _documentService;
+        private readonly AppSettings _appSettings;
 
         public OcrController(
             ILogger<OcrController> logger, 
             IMistralService mistralService,
-            IDocumentService documentService)
+            IDocumentService documentService,
+            IOptions<AppSettings> appSettings)
         {
             _logger = logger;
             _mistralService = mistralService;
             _documentService = documentService;
+            _appSettings = appSettings.Value;
         }
 
         [HttpPost]
-        [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200 MB
+        [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // Set from configuration in Program.cs
         public async Task<IActionResult> PerformOcr([FromBody] OcrRequest request)
         {
             if (string.IsNullOrEmpty(request.Document.DocumentUrl))
@@ -58,8 +62,8 @@ namespace MistralOCR.Controllers
         }
 
         [HttpGet("url")]
-        [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // 200 MB
-        public async Task<IActionResult> PerformOcrFromUrl([FromQuery] string url, [FromQuery] bool includeImages = false, [FromQuery] string model = "mistral-ocr-latest")
+        [RequestFormLimits(MultipartBodyLengthLimit = 209715200)] // Set from configuration in Program.cs
+        public async Task<IActionResult> PerformOcrFromUrl([FromQuery] string url, [FromQuery] bool includeImages = false, [FromQuery] string? model = null)
         {
             if (string.IsNullOrEmpty(url))
             {
@@ -68,10 +72,17 @@ namespace MistralOCR.Controllers
 
             try
             {
+                // Use the model from the request or the default from configuration
+                model ??= _appSettings.MistralAI.Models.OCR;
+                
+                // Log the request details
+                _logger.LogInformation($"Processing OCR request for URL: {url}, includeImages: {includeImages}, model: {model}");
+                
                 var result = await _mistralService.GetOcrAsync(url, includeImages, model);
 
                 if (!result.IsSuccess)
                 {
+                    _logger.LogError($"OCR processing failed: {result.Error}");
                     return StatusCode(500, new { error = result.Error });
                 }
 
@@ -86,7 +97,7 @@ namespace MistralOCR.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error performing OCR");
+                _logger.LogError(ex, "Error performing OCR from URL");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

@@ -1,0 +1,360 @@
+@model MistralOCR.Models.DocumentLogsViewModel
+
+@{
+    ViewData["Title"] = "Document Question Logs";
+}
+
+<style>
+    :root {
+        --primary-color: #6366f1;
+        --primary-hover: #4f46e5;
+        --secondary-color: #10b981;
+        --secondary-hover: #059669;
+        --accent-color: #f59e0b;
+        --dark-color: #1f2937;
+        --light-color: #f3f4f6;
+        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        --hover-transition: all 0.3s ease;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--card-shadow);
+    }
+
+    .custom-card {
+        border: none;
+        border-radius: 0.5rem;
+        box-shadow: var(--card-shadow);
+        transition: var(--hover-transition);
+    }
+
+    .custom-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+        background: linear-gradient(to right, var(--primary-color), var(--primary-hover));
+        color: white;
+        border-top-left-radius: 0.5rem !important;
+        border-top-right-radius: 0.5rem !important;
+        font-weight: 600;
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        transition: var(--hover-transition);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        border-color: var(--primary-hover);
+        transform: translateY(-2px);
+    }
+
+    .btn-outline-secondary {
+        color: var(--dark-color);
+        border-color: var(--dark-color);
+        transition: var(--hover-transition);
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: var(--dark-color);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .section-label {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .data-value {
+        color: var(--dark-color);
+        font-weight: 500;
+    }
+
+    .log-item {
+        border-left: 4px solid var(--primary-color);
+        background-color: var(--light-color);
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        transition: var(--hover-transition);
+    }
+
+    .log-item:hover {
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .log-header {
+        cursor: pointer;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .log-header:hover {
+        background-color: rgba(99, 102, 241, 0.05);
+    }
+
+    .log-content {
+        padding: 0 1rem 1rem 1rem;
+        display: none;
+    }
+
+    .log-question {
+        background-color: rgba(99, 102, 241, 0.1);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .log-answer {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+
+    .log-meta {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .log-model {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        background-color: var(--accent-color);
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .log-tokens {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        background-color: var(--secondary-color);
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 0;
+        color: #6b7280;
+    }
+
+    .toggle-icon {
+        transition: transform 0.3s ease;
+    }
+
+    .rotate-icon {
+        transform: rotate(180deg);
+    }
+
+    .expand-all-btn {
+        font-size: 0.875rem;
+        padding: 0.25rem 0.75rem;
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="mb-2">Document Question Logs</h1>
+            <p class="lead mb-0">View history of questions and answers for this document</p>
+        </div>
+        <div>
+            <a href="/Home/ProcessDocument/@Model.Document.Id" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-file-earmark-text me-1"></i> Process Document
+            </a>
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Home
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="custom-card card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Document Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label section-label">Title</label>
+                                <p class="data-value">@Model.Document.Title</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label section-label">Created</label>
+                                <p class="data-value">@Model.Document.CreatedAt.ToString("g")</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label section-label">Last Processed</label>
+                                <p class="data-value">@(Model.Document.LastProcessedAt?.ToString("g") ?? "Never")</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label section-label">URL</label>
+                        <p class="text-break data-value">
+                            <a href="@Model.Document.Url" target="_blank" class="text-decoration-none">@Model.Document.Url</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="custom-card card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Question History</h5>
+                    <div>
+                        <button id="expandAllBtn" class="btn btn-sm btn-outline-light expand-all-btn me-2">
+                            <i class="bi bi-arrows-expand"></i> Expand All
+                        </button>
+                        <span class="badge bg-primary rounded-pill">@Model.QuestionLogs.Count logs</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (Model.QuestionLogs.Any())
+                    {
+                        foreach (var log in Model.QuestionLogs)
+                        {
+                            <div class="log-item">
+                                <div class="log-header" onclick="toggleLogContent(this)">
+                                    <div>
+                                        <span class="log-model">@log.Model</span>
+                                        @if (log.TotalTokens.HasValue)
+                                        {
+                                            <span class="log-tokens ms-2">@log.TotalTokens tokens</span>
+                                        }
+                                        <span class="ms-3 text-truncate d-inline-block" style="max-width: 500px;">@log.Question</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <div class="log-meta me-3">
+                                            <i class="bi bi-clock-history me-1"></i> @log.CreatedAt.ToString("g")
+                                        </div>
+                                        <i class="bi bi-chevron-down toggle-icon"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="log-content">
+                                    <div class="log-question mt-3">
+                                        <h5 class="section-label"><i class="bi bi-question-circle me-2"></i>Question:</h5>
+                                        <p class="mb-0">@log.Question</p>
+                                    </div>
+                                    
+                                    <div class="log-answer">
+                                        <h5 class="section-label"><i class="bi bi-chat-left-text me-2"></i>Answer:</h5>
+                                        <p class="mb-0" style="white-space: pre-wrap;">@log.Answer</p>
+                                    </div>
+                                    
+                                    @if (log.PromptTokens.HasValue && log.CompletionTokens.HasValue)
+                                    {
+                                        <div class="log-meta mt-3">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <i class="bi bi-input-cursor-text me-1"></i> Prompt: @log.PromptTokens tokens
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <i class="bi bi-output me-1"></i> Completion: @log.CompletionTokens tokens
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <i class="bi bi-calculator me-1"></i> Total: @log.TotalTokens tokens
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <i class="bi bi-chat-square-text" style="font-size: 4rem;"></i>
+                            <p class="mt-3 fs-5">No questions have been asked about this document yet</p>
+                            <p class="text-muted">Go to the Process Document page to ask questions</p>
+                            <a href="/Home/ProcessDocument/@Model.Document.Id" class="btn btn-primary mt-3">
+                                <i class="bi bi-chat-dots me-2"></i> Ask Questions
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleLogContent(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (content.style.display === 'block') {
+                content.style.display = 'none';
+                icon.classList.remove('rotate-icon');
+            } else {
+                content.style.display = 'block';
+                icon.classList.add('rotate-icon');
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const expandAllBtn = document.getElementById('expandAllBtn');
+            let allExpanded = false;
+            
+            expandAllBtn.addEventListener('click', function() {
+                const logHeaders = document.querySelectorAll('.log-header');
+                const logContents = document.querySelectorAll('.log-content');
+                const toggleIcons = document.querySelectorAll('.toggle-icon');
+                
+                if (allExpanded) {
+                    // Collapse all
+                    logContents.forEach(content => {
+                        content.style.display = 'none';
+                    });
+                    
+                    toggleIcons.forEach(icon => {
+                        icon.classList.remove('rotate-icon');
+                    });
+                    
+                    expandAllBtn.innerHTML = '<i class="bi bi-arrows-expand"></i> Expand All';
+                } else {
+                    // Expand all
+                    logContents.forEach(content => {
+                        content.style.display = 'block';
+                    });
+                    
+                    toggleIcons.forEach(icon => {
+                        icon.classList.add('rotate-icon');
+                    });
+                    
+                    expandAllBtn.innerHTML = '<i class="bi bi-arrows-collapse"></i> Collapse All';
+                }
+                
+                allExpanded = !allExpanded;
+            });
+        });
+    </script>
+} 

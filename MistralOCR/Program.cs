@@ -1,15 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using MistralOCR.Data;
+using MistralOCR.Models;
 using MistralOCR.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure AppSettings
+builder.Services.Configure<AppSettings>(builder.Configuration);
+
 // Configure Kestrel server timeouts
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(3);
-    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(3);
-    serverOptions.Limits.MaxRequestBodySize = 209715200; // 200 MB
+    var kestrelLimits = builder.Configuration.GetSection("Kestrel:Limits");
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.Parse(kestrelLimits["KeepAliveTimeout"] ?? "00:03:00");
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.Parse(kestrelLimits["RequestHeadersTimeout"] ?? "00:03:00");
+    serverOptions.Limits.MaxRequestBodySize = long.Parse(kestrelLimits["MaxRequestBodySize"] ?? "209715200");
 });
 
 // Add services to the container.
@@ -19,10 +24,11 @@ builder.Services.AddControllersWithViews(options =>
     options.MaxModelBindingCollectionSize = 2000;
 });
 
-// Register HttpClient with 3-minute timeout
+// Register HttpClient with timeout from configuration
 builder.Services.AddHttpClient<IMistralService, MistralService>()
     .ConfigureHttpClient(client => {
-        client.Timeout = TimeSpan.FromMinutes(3);
+        var timeoutSeconds = builder.Configuration.GetValue<int>("MistralAI:Timeouts:RequestTimeoutSeconds", 180);
+        client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
     });
 
 // Add SQLite database
@@ -31,6 +37,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Register services
 builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IQuestionLogService, QuestionLogService>();
 
 var app = builder.Build();
 
