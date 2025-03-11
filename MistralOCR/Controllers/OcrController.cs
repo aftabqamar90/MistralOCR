@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MistralOCR.Models;
 using MistralOCR.Services;
@@ -8,6 +9,7 @@ namespace MistralOCR.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class OcrController : ControllerBase
     {
         private readonly ILogger<OcrController> _logger;

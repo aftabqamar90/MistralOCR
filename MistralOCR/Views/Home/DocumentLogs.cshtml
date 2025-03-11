@@ -227,7 +227,13 @@
             <div class="custom-card card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Question History</h5>
-                    <div>
+                    <div class="d-flex align-items-center">
+                        <div class="input-group me-2">
+                            <input type="text" id="questionSearchInput" class="form-control form-control-sm" placeholder="Search questions..." aria-label="Search questions">
+                            <button class="btn btn-sm btn-light" type="button" id="questionSearchButton">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
                         <button id="expandAllBtn" class="btn btn-sm btn-outline-light expand-all-btn me-2">
                             <i class="bi bi-arrows-expand"></i> Expand All
                         </button>
@@ -237,65 +243,52 @@
                 <div class="card-body">
                     @if (Model.QuestionLogs.Any())
                     {
-                        foreach (var log in Model.QuestionLogs)
-                        {
-                            <div class="log-item">
-                                <div class="log-header" onclick="toggleLogContent(this)">
-                                    <div>
-                                        <span class="log-model">@log.Model</span>
-                                        @if (log.TotalTokens.HasValue)
-                                        {
-                                            <span class="log-tokens ms-2">@log.TotalTokens tokens</span>
-                                        }
-                                        <span class="ms-3 text-truncate d-inline-block" style="max-width: 500px;">@log.Question</span>
-                                    </div>
-                                    <div class="d-flex align-items-center">
-                                        <div class="log-meta me-3">
-                                            <i class="bi bi-clock-history me-1"></i> @log.CreatedAt.ToString("g")
+                        <div id="questionLogsContainer">
+                            @foreach (var log in Model.QuestionLogs)
+                            {
+                                <div class="log-item" data-question="@log.Question.ToLower()" data-answer="@log.Answer.ToLower()" data-model="@log.Model.ToLower()">
+                                    <div class="log-header" onclick="toggleLogContent(this)">
+                                        <div>
+                                            <span class="log-model">@log.Model</span>
+                                            @if (log.TotalTokens.HasValue)
+                                            {
+                                                <span class="log-tokens ms-2">@log.TotalTokens tokens</span>
+                                            }
+                                            <span class="ms-3 text-truncate d-inline-block" style="max-width: 500px;">@log.Question</span>
                                         </div>
-                                        <i class="bi bi-chevron-down toggle-icon"></i>
+                                        <div class="d-flex align-items-center">
+                                            <span class="log-meta me-3">@log.CreatedAt.ToString("g")</span>
+                                            <i class="bi bi-chevron-down toggle-icon"></i>
+                                        </div>
+                                    </div>
+                                    <div class="log-content">
+                                        <div class="log-question">
+                                            <strong>Question:</strong>
+                                            <p class="mb-0 mt-2">@log.Question</p>
+                                        </div>
+                                        <div class="log-answer">
+                                            <strong>Answer:</strong>
+                                            <p class="mb-0 mt-2" style="white-space: pre-wrap;">@log.Answer</p>
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                <div class="log-content">
-                                    <div class="log-question mt-3">
-                                        <h5 class="section-label"><i class="bi bi-question-circle me-2"></i>Question:</h5>
-                                        <p class="mb-0">@log.Question</p>
-                                    </div>
-                                    
-                                    <div class="log-answer">
-                                        <h5 class="section-label"><i class="bi bi-chat-left-text me-2"></i>Answer:</h5>
-                                        <p class="mb-0" style="white-space: pre-wrap;">@log.Answer</p>
-                                    </div>
-                                    
-                                    @if (log.PromptTokens.HasValue && log.CompletionTokens.HasValue)
-                                    {
-                                        <div class="log-meta mt-3">
-                                            <div class="row">
-                                                <div class="col-md-4">
-                                                    <i class="bi bi-input-cursor-text me-1"></i> Prompt: @log.PromptTokens tokens
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <i class="bi bi-output me-1"></i> Completion: @log.CompletionTokens tokens
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <i class="bi bi-calculator me-1"></i> Total: @log.TotalTokens tokens
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
+                            }
+                        </div>
+                        <div id="noSearchResults" class="empty-state" style="display: none;">
+                            <i class="bi bi-search" style="font-size: 3rem;"></i>
+                            <p class="mt-3">No questions match your search criteria</p>
+                            <button id="clearSearchBtn" class="btn btn-sm btn-outline-secondary mt-2">
+                                <i class="bi bi-x-circle me-1"></i> Clear Search
+                            </button>
+                        </div>
                     }
                     else
                     {
                         <div class="empty-state">
-                            <i class="bi bi-chat-square-text" style="font-size: 4rem;"></i>
-                            <p class="mt-3 fs-5">No questions have been asked about this document yet</p>
-                            <p class="text-muted">Go to the Process Document page to ask questions</p>
-                            <a href="/Home/ProcessDocument/@Model.Document.Id" class="btn btn-primary mt-3">
-                                <i class="bi bi-chat-dots me-2"></i> Ask Questions
+                            <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                            <p class="mt-3">No questions have been asked about this document yet</p>
+                            <a href="/Home/ProcessDocument/@Model.Document.Id" class="btn btn-primary mt-2">
+                                <i class="bi bi-chat-dots me-1"></i> Ask Questions
                             </a>
                         </div>
                     }
@@ -307,8 +300,101 @@
 
 @section Scripts {
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up expand all button
+            const expandAllBtn = document.getElementById('expandAllBtn');
+            let expanded = false;
+            
+            expandAllBtn.addEventListener('click', function() {
+                const logItems = document.querySelectorAll('.log-item');
+                expanded = !expanded;
+                
+                logItems.forEach(item => {
+                    const content = item.querySelector('.log-content');
+                    const icon = item.querySelector('.toggle-icon');
+                    
+                    if (expanded) {
+                        content.style.display = 'block';
+                        icon.classList.add('rotate-icon');
+                        expandAllBtn.innerHTML = '<i class="bi bi-arrows-collapse"></i> Collapse All';
+                    } else {
+                        content.style.display = 'none';
+                        icon.classList.remove('rotate-icon');
+                        expandAllBtn.innerHTML = '<i class="bi bi-arrows-expand"></i> Expand All';
+                    }
+                });
+            });
+            
+            // Set up question search
+            const searchInput = document.getElementById('questionSearchInput');
+            const searchButton = document.getElementById('questionSearchButton');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const questionLogsContainer = document.getElementById('questionLogsContainer');
+            const noSearchResults = document.getElementById('noSearchResults');
+            
+            // Search function
+            function searchQuestions() {
+                const searchTerm = searchInput.value.trim().toLowerCase();
+                const logItems = document.querySelectorAll('.log-item');
+                let matchFound = false;
+                
+                if (!searchTerm) {
+                    // If search is empty, show all items
+                    logItems.forEach(item => {
+                        item.style.display = 'block';
+                    });
+                    questionLogsContainer.style.display = 'block';
+                    noSearchResults.style.display = 'none';
+                    return;
+                }
+                
+                // Filter log items based on search term
+                logItems.forEach(item => {
+                    const question = item.getAttribute('data-question');
+                    const answer = item.getAttribute('data-answer');
+                    const model = item.getAttribute('data-model');
+                    
+                    if (question.includes(searchTerm) || 
+                        answer.includes(searchTerm) || 
+                        model.includes(searchTerm)) {
+                        item.style.display = 'block';
+                        matchFound = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                // Show/hide no results message
+                if (matchFound) {
+                    questionLogsContainer.style.display = 'block';
+                    noSearchResults.style.display = 'none';
+                } else {
+                    questionLogsContainer.style.display = 'none';
+                    noSearchResults.style.display = 'block';
+                }
+            }
+            
+            // Set up search button click
+            searchButton.addEventListener('click', searchQuestions);
+            
+            // Enable search on Enter key
+            searchInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    searchQuestions();
+                }
+            });
+            
+            // Clear search button
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                searchQuestions();
+            });
+        });
+        
+        // Toggle log content visibility
         function toggleLogContent(header) {
-            const content = header.nextElementSibling;
+            const logItem = header.closest('.log-item');
+            const content = logItem.querySelector('.log-content');
             const icon = header.querySelector('.toggle-icon');
             
             if (content.style.display === 'block') {
@@ -319,42 +405,5 @@
                 icon.classList.add('rotate-icon');
             }
         }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const expandAllBtn = document.getElementById('expandAllBtn');
-            let allExpanded = false;
-            
-            expandAllBtn.addEventListener('click', function() {
-                const logHeaders = document.querySelectorAll('.log-header');
-                const logContents = document.querySelectorAll('.log-content');
-                const toggleIcons = document.querySelectorAll('.toggle-icon');
-                
-                if (allExpanded) {
-                    // Collapse all
-                    logContents.forEach(content => {
-                        content.style.display = 'none';
-                    });
-                    
-                    toggleIcons.forEach(icon => {
-                        icon.classList.remove('rotate-icon');
-                    });
-                    
-                    expandAllBtn.innerHTML = '<i class="bi bi-arrows-expand"></i> Expand All';
-                } else {
-                    // Expand all
-                    logContents.forEach(content => {
-                        content.style.display = 'block';
-                    });
-                    
-                    toggleIcons.forEach(icon => {
-                        icon.classList.add('rotate-icon');
-                    });
-                    
-                    expandAllBtn.innerHTML = '<i class="bi bi-arrows-collapse"></i> Collapse All';
-                }
-                
-                allExpanded = !allExpanded;
-            });
-        });
     </script>
 } 

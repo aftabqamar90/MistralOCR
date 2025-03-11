@@ -17,6 +17,14 @@
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="d-flex flex-column align-items-center">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading...</div>
+        </div>
+    </div>
+
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark navbar-gradient border-bottom box-shadow mb-4">
             <div class="container-fluid">
@@ -40,6 +48,7 @@
                             </a>
                         </li>
                     </ul>
+                    <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
@@ -73,5 +82,96 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    
+    <script>
+        // Show loading overlay on page navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Hide loading when page is fully loaded
+            hideLoading();
+            
+            // Show loading on form submissions (except for forms with data-no-loading attribute)
+            document.querySelectorAll('form:not([data-no-loading])').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    // Don't show loading for AJAX form submissions
+                    if (this.getAttribute('data-ajax') === 'true') {
+                        return;
+                    }
+                    showLoading();
+                });
+            });
+            
+            // Show loading on link clicks (except for links with data-no-loading attribute)
+            document.querySelectorAll('a:not([data-no-loading])').forEach(link => {
+                if (link.getAttribute('href') && 
+                    !link.getAttribute('href').startsWith('#') && 
+                    !link.getAttribute('href').startsWith('javascript:') &&
+                    !link.getAttribute('target')) {
+                    link.addEventListener('click', function() {
+                        showLoading();
+                    });
+                }
+            });
+            
+            // Handle programmatic navigation
+            const originalPushState = history.pushState;
+            history.pushState = function() {
+                hideLoading(); // Hide loading before navigation
+                return originalPushState.apply(this, arguments);
+            };
+            
+            const originalReplaceState = history.replaceState;
+            history.replaceState = function() {
+                hideLoading(); // Hide loading before navigation
+                return originalReplaceState.apply(this, arguments);
+            };
+            
+            // Handle browser back/forward navigation
+            window.addEventListener('popstate', function() {
+                hideLoading();
+            });
+            
+            // Handle page unload
+            window.addEventListener('beforeunload', function() {
+                // Only show loading if it's not an AJAX request
+                if (!window.isAjaxRequest) {
+                    showLoading();
+                }
+            });
+            
+            // Set up axios interceptors to handle AJAX requests
+            if (window.axios) {
+                // Flag to track AJAX requests
+                window.isAjaxRequest = false;
+                
+                axios.interceptors.request.use(function(config) {
+                    window.isAjaxRequest = true;
+                    return config;
+                }, function(error) {
+                    window.isAjaxRequest = false;
+                    return Promise.reject(error);
+                });
+                
+                axios.interceptors.response.use(function(response) {
+                    window.isAjaxRequest = false;
+                    return response;
+                }, function(error) {
+                    window.isAjaxRequest = false;
+                    return Promise.reject(error);
+                });
+            }
+        });
+        
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('show');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+        
+        // Expose loading functions globally
+        window.showLoading = showLoading;
+        window.hideLoading = hideLoading;
+    </script>
 </body>
 </html>
