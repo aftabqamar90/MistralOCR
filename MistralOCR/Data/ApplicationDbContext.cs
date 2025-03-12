@@ -13,6 +13,7 @@ namespace MistralOCR.Data
 
         public DbSet<DocumentRecord> Documents { get; set; } = null!;
         public DbSet<DocumentQuestionLog> QuestionLogs { get; set; } = null!;
+        public DbSet<DocumentOcrResult> OcrResults { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +32,13 @@ namespace MistralOCR.Data
                 
             modelBuilder.Entity<DocumentQuestionLog>()
                 .HasIndex(q => q.CreatedAt);
+                
+            // Add indexes for OcrResults
+            modelBuilder.Entity<DocumentOcrResult>()
+                .HasIndex(o => o.DocumentId);
+                
+            modelBuilder.Entity<DocumentOcrResult>()
+                .HasIndex(o => o.CreatedAt);
         }
     }
 } 

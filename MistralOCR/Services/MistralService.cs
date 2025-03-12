@@ -13,17 +13,20 @@ namespace MistralOCR.Services
         private readonly ILogger<MistralService> _logger;
         private readonly HttpClient _httpClient;
         private readonly AppSettings _appSettings;
+        private readonly IDocumentService _documentService;
 
         public MistralService(
             IConfiguration configuration, 
             ILogger<MistralService> logger, 
             HttpClient httpClient,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings,
+            IDocumentService documentService)
         {
             _configuration = configuration;
             _logger = logger;
             _httpClient = httpClient;
             _appSettings = appSettings.Value;
+            _documentService = documentService;
 
             // Get API key from configuration or environment variable
             string? apiKey = _appSettings.MistralAI.ApiKey;
@@ -327,6 +330,68 @@ namespace MistralOCR.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error performing OCR");
+                return new Root
+                {
+                    IsSuccess = false,
+                    Error = $"Exception: {ex.Message}"
+                };
+            }
+        }
+
+        public async Task<Root> GetOcrWithCachingAsync(string documentUrl, int documentId, bool includeImageBase64 = false, string? model = null)
+        {
+            try
+            {
+                // Use the provided model or default from configuration
+                model ??= _appSettings.MistralAI.Models.OCR;
+                
+                _logger.LogInformation($"Getting OCR for document: {documentUrl} (ID: {documentId}) using model: {model}");
+                
+                // Check if we have a cached OCR result for this document and model
+                var cachedResult = await _documentService.GetLatestOcrResultAsync(documentId, model);
+                
+                if (cachedResult != null)
+                {
+                    _logger.LogInformation($"Using cached OCR result for document {documentId} with model {model}");
+                    
+                    // Get the OCR result from the cache
+                    var ocrResult = cachedResult.OcrResult;
+                    
+                    if (ocrResult != null)
+                    {
+                        // Set success flag and return the cached result
+                        ocrResult.IsSuccess = true;
+                        
+                        // If images are requested but not included in the cached result, we need to fetch them
+                        if (includeImageBase64 && ocrResult.pages.Any() && 
+                            ocrResult.pages.Any(p => p.images.Any() && string.IsNullOrEmpty(p.images.First().image_base64)))
+                        {
+                            _logger.LogInformation($"Images requested but not in cache, fetching new OCR result");
+                            // We need to fetch a new result with images
+                        }
+                        else
+                        {
+                            return ocrResult;
+                        }
+                    }
+                }
+                
+                // If we don't have a cached result or need to fetch images, get a new OCR result
+                _logger.LogInformation($"No cached OCR result found or images needed, fetching from API");
+                var result = await GetOcrAsync(documentUrl, includeImageBase64, model);
+                
+                if (result.IsSuccess)
+                {
+                    // Save the OCR result to the database
+                    await _documentService.SaveOcrResultAsync(documentId, result, model);
+                    _logger.LogInformation($"Saved new OCR result for document {documentId}");
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting OCR with caching for document {documentId}");
                 return new Root
                 {
                     IsSuccess = false,

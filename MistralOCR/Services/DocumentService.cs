@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MistralOCR.Data;
 using MistralOCR.Models;
+using System.Text.Json;
 
 namespace MistralOCR.Services
 {
@@ -90,6 +91,55 @@ namespace MistralOCR.Services
             _logger.LogInformation($"Deleted document record: {id}");
             
             return true;
+        }
+        
+        // OCR result methods
+        public async Task<DocumentOcrResult?> GetLatestOcrResultAsync(int documentId, string? model = null)
+        {
+            var query = _context.OcrResults
+                .Where(o => o.DocumentId == documentId);
+                
+            // If model is specified, filter by model
+            if (!string.IsNullOrEmpty(model))
+            {
+                query = query.Where(o => o.Model == model);
+            }
+            
+            // Get the latest OCR result
+            return await query
+                .OrderByDescending(o => o.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+        
+        public async Task<DocumentOcrResult> SaveOcrResultAsync(int documentId, Root ocrResult, string model)
+        {
+            // Check if document exists
+            var document = await GetDocumentByIdAsync(documentId);
+            if (document == null)
+            {
+                throw new ArgumentException($"Document with ID {documentId} not found");
+            }
+            
+            // Serialize the OCR result to JSON
+            var ocrResultJson = JsonSerializer.Serialize(ocrResult);
+            
+            // Create a new OCR result record
+            var ocrResultRecord = new DocumentOcrResult
+            {
+                DocumentId = documentId,
+                Model = model,
+                OcrResultJson = ocrResultJson,
+                PagesProcessed = ocrResult.usage_info?.pages_processed ?? 0,
+                DocSizeBytes = ocrResult.usage_info?.doc_size_bytes ?? 0,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.OcrResults.Add(ocrResultRecord);
+            await _context.SaveChangesAsync();
+            
+            _logger.LogInformation($"Saved OCR result for document {documentId} using model {model}");
+            
+            return ocrResultRecord;
         }
     }
 } 

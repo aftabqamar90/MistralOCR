@@ -23,5 +23,8 @@ namespace MistralOCR.Models
         
         // Navigation property for question logs
         public ICollection<DocumentQuestionLog> QuestionLogs { get; set; } = new List<DocumentQuestionLog>();
+        
+        // Navigation property for OCR results
+        public ICollection<DocumentOcrResult> OcrResults { get; set; } = new List<DocumentOcrResult>();
     }
 } 

@@ -1,4 +1,4 @@
-# MistralOCR
+ # MistralOCR
 
 A .NET Core web application that integrates with Mistral AI's powerful OCR and language model capabilities to process PDF documents with exceptional accuracy.
 

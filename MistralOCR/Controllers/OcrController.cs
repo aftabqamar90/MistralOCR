@@ -40,8 +40,14 @@ namespace MistralOCR.Controllers
 
             try
             {
-                var result = await _mistralService.GetOcrAsync(
+                // Store the document URL first to get the document ID
+                var documentTitle = ExtractTitleFromUrl(request.Document.DocumentUrl);
+                var document = await _documentService.AddDocumentAsync(request.Document.DocumentUrl, documentTitle);
+                
+                // Use the caching version of GetOcrAsync
+                var result = await _mistralService.GetOcrWithCachingAsync(
                     request.Document.DocumentUrl,
+                    document.Id,
                     request.IncludeImageBase64,
                     request.Model);
 
@@ -50,9 +56,8 @@ namespace MistralOCR.Controllers
                     return StatusCode(500, new { error = result.Error });
                 }
 
-                // Store the document URL
-                var documentTitle = ExtractTitleFromUrl(request.Document.DocumentUrl);
-                await _documentService.AddDocumentAsync(request.Document.DocumentUrl, documentTitle);
+                // Update the document as processed
+                await _documentService.UpdateDocumentProcessedAsync(document.Id);
 
                 return Ok(result);
             }
@@ -80,17 +85,22 @@ namespace MistralOCR.Controllers
                 // Log the request details
                 _logger.LogInformation($"Processing OCR request for URL: {url}, includeImages: {includeImages}, model: {model}");
                 
-                var result = await _mistralService.GetOcrAsync(url, includeImages, model);
+                // Store the document URL first to get the document ID
+                var documentTitle = ExtractTitleFromUrl(url);
+                var document = await _documentService.AddDocumentAsync(url, documentTitle);
+                
+                // Use the caching version of GetOcrAsync
+                var result = await _mistralService.GetOcrWithCachingAsync(
+                    url,
+                    document.Id,
+                    includeImages,
+                    model);
 
                 if (!result.IsSuccess)
                 {
                     _logger.LogError($"OCR processing failed: {result.Error}");
                     return StatusCode(500, new { error = result.Error });
                 }
-
-                // Store the document URL
-                var documentTitle = ExtractTitleFromUrl(url);
-                var document = await _documentService.AddDocumentAsync(url, documentTitle);
                 
                 // Update the document as processed
                 await _documentService.UpdateDocumentProcessedAsync(document.Id);
